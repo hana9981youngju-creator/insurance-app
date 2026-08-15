@@ -40,7 +40,7 @@ if uploaded_file is not None:
             with st.spinner("AI가 보험 가입 내역을 정밀 분석하고 있습니다... (약 10~20초 소요)"):
                 try:
                     genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel("gemini-2.5-flash")
+                    model = genai.GenerativeModel("gemini-1.5-pro")
 
                     prompt = """
                     당신은 대한민국 20년 경력의 베테랑 독립보험대리점(GA) 수석 보험설계사이자 보장분석 전문가입니다.
