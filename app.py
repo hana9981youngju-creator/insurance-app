@@ -1,5 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 from PIL import Image
 from pypdf import PdfReader
 import io
@@ -19,7 +19,7 @@ uploaded_file = st.file_uploader("가입현황표 파일(이미지 또는 PDF)�
 if uploaded_file is not None:
     file_type = uploaded_file.name.split('.')[-1].lower()
     pdf_text = ""
-    image_list = []
+    image = None
 
     if file_type == 'pdf':
         st.success(f"📄 PDF 문서가 등록되었습니다: {uploaded_file.name}")
@@ -30,7 +30,6 @@ if uploaded_file is not None:
                 pdf_text += text + "\n"
     else:
         image = Image.open(uploaded_file)
-        image_list.append(image)
         st.image(image, caption="업로드된 가입현황표", use_container_width=True)
 
     if st.button("🚀 보장분석 리포트 생성하기", type="primary"):
@@ -39,9 +38,8 @@ if uploaded_file is not None:
         else:
             with st.spinner("AI가 보험 가입 내역을 정밀 분석하고 있습니다... (약 10~20초 소요)"):
                 try:
-                    genai.configure(api_key=api_key)
-                    # 오류 없는 최신 표준 모델명
-                    model = genai.GenerativeModel("gemini-1.5-flash-latest")
+                    # 최신 Google GenAI 클라이언트 초기화
+                    client = genai.Client(api_key=api_key)
 
                     prompt = """
                     당신은 대한민국 20년 경력의 베테랑 독립보험대리점(GA) 수석 보험설계사이자 보장분석 전문가입니다.
@@ -65,13 +63,17 @@ if uploaded_file is not None:
                     (구체적인 실천 권장사항 3가지)
                     """
 
-                    contents = [prompt]
                     if file_type == 'pdf':
-                        contents.append(f"다음은 고객의 보험 가입내역 데이터입니다:\n\n{pdf_text}")
+                        contents = [prompt, f"다음은 고객의 보험 가입내역 텍스트입니다:\n\n{pdf_text}"]
                     else:
-                        contents.extend(image_list)
+                        contents = [prompt, image]
 
-                    response = model.generate_content(contents)
+                    # 최신 정식 모델 호출
+                    response = client.models.generate_content(
+                        model='gemini-2.0-flash',
+                        contents=contents
+                    )
+
                     st.success("✅ 분석이 완료되었습니다!")
                     st.markdown(response.text)
 
