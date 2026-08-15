@@ -1,43 +1,54 @@
-import streamlit as st
-import google.generativeai as genai
+import io
 from PIL import Image
+from pypdf import PdfReader
+import google.generativeai as genai
+import streamlit as st
 
-# 1. 페이지 제목 및 기본 설정
 st.set_page_config(page_title="AI 스마트 보험 보장분석", page_icon="📑", layout="centered")
 
 st.title("📑 AI 스마트 보험 보장분석")
-st.write("보험 가입현황표 캡처 이미지를 업로드하면 전문적인 분석 리포트를 생성합니다.")
+st.write("보험 가입현황표 **이미지(JPG/PNG)** 또는 **PDF 파일**을 업로드하면 전문 분석 리포트를 생성합니다.")
 
-# 2. 사이드바 API 키 입력
+# 사이드바 API Key 입력
 api_key = st.sidebar.text_input("Gemini API Key를 입력하세요", type="password")
-st.sidebar.markdown("[👉 API Key 무료 발급받기](https://aistudio.google.com/)")
+st.sidebar.markdown("[👉 API Key 무료 발급받기](https://aistudio.google.com/apikey)")
 
-# 3. 이미지 업로드 영역
-uploaded_file = st.file_uploader("가입현황표 이미지를 올려주세요 (JPG, PNG, HEIC)", type=["png", "jpg", "jpeg"])
+# 파일 업로더
+uploaded_file = st.file_uploader("가입현황표 파일을 올려주세요 (PNG, JPG, PDF)", type=["png", "jpg", "jpeg", "pdf"])
 
 if uploaded_file is not None:
-    image = Image.open(uploaded_file)
-    st.image(image, caption="업로드된 가입현황표", use_container_width=True)
+    file_type = uploaded_file.name.split('.')[-1].lower()
+    pdf_text = ""
+    image_list = []
 
-    # 4. 분석 시작 버튼
+    if file_type == 'pdf':
+        st.success(f"📄 PDF 문서가 업로드되었습니다: {uploaded_file.name}")
+        pdf_reader = PdfReader(uploaded_file)
+        for page in pdf_reader.pages:
+            text = page.extract_text()
+            if text:
+                pdf_text += text + "\n"
+    else:
+        image = Image.open(uploaded_file)
+        image_list.append(image)
+        st.image(image, caption="업로드된 가입현황표", use_container_width=True)
+
     if st.button("🚀 보장분석 리포트 생성하기", type="primary"):
         if not api_key:
             st.error("좌측 사이드바에 Gemini API Key를 먼저 입력해 주세요!")
         else:
-            with st.spinner("AI가 보험 가입 내역을 정밀 판독하고 있습니다... (약 10~15초 소요)"):
+            with st.spinner("AI가 보험 가입 내역을 정밀 분석하고 있습니다... (약 10~20초 소요)"):
                 try:
-                    # Gemini 모델 설정
                     genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel("gemini-1.5-flash")
+                    model = genai.GenerativeModel("gemini-2.5-flash")
 
-                    # 분석 지침 프롬프트
                     prompt = """
                     당신은 대한민국 20년 경력의 베테랑 독립보험대리점(GA) 수석 보험설계사이자 보장분석 전문가입니다.
-                    첨부된 보험 가입현황표 이미지를 정밀 분석하여 아래 양식에 맞춘 마크다운 리포트를 작성해주세요.
+                    제공된 보험 가입현황 데이터를 정밀 분석하여 아래 양식에 맞춘 마크다운 리포트를 작성해주세요.
 
                     [리포트 출력 형식]
                     ## 📊 1. 종합 총평 및 핵심 요약
-                    - 고객 기본 정보 (성함, 연령, 성별, 총 보험료)
+                    - 고객 기본 정보 (성함, 연령, 성별, 총 보험료, 정상 계약 건수)
                     - 핵심 요약 3~4줄 (과다/부족/핵심 특징)
 
                     ## 🔍 2. 영역별 상세 보장 진단
@@ -53,8 +64,13 @@ if uploaded_file is not None:
                     (구체적인 실천 권장사항 3가지)
                     """
 
-                    # AI 호출 및 분석 결과 생성
-                    response = model.generate_content([prompt, image])
+                    contents = [prompt]
+                    if file_type == 'pdf':
+                        contents.append(f"다음은 고객의 보험 가입내역 데이터입니다:\n\n{pdf_text}")
+                    else:
+                        contents.extend(image_list)
+
+                    response = model.generate_content(contents)
                     st.success("✅ 분석이 완료되었습니다!")
                     st.markdown(response.text)
 
