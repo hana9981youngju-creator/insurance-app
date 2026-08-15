@@ -1,8 +1,8 @@
-import io
+import streamlit as st
+import google.generativeai as genai
 from PIL import Image
 from pypdf import PdfReader
-import google.generativeai as genai
-import streamlit as st
+import io
 
 st.set_page_config(page_title="AI 스마트 보험 보장분석", page_icon="📑", layout="centered")
 
@@ -14,7 +14,7 @@ api_key = st.sidebar.text_input("Gemini API Key를 입력하세요", type="passw
 st.sidebar.markdown("[👉 API Key 무료 발급받기](https://aistudio.google.com/apikey)")
 
 # 파일 업로더
-uploaded_file = st.file_uploader("가입현황표 파일을 올려주세요 (PNG, JPG, PDF)", type=["png", "jpg", "jpeg", "pdf"])
+uploaded_file = st.file_uploader("가입현황표 파일(이미지 또는 PDF)을 올려주세요", type=["png", "jpg", "jpeg", "pdf"])
 
 if uploaded_file is not None:
     file_type = uploaded_file.name.split('.')[-1].lower()
@@ -22,7 +22,7 @@ if uploaded_file is not None:
     image_list = []
 
     if file_type == 'pdf':
-        st.success(f"📄 PDF 문서가 업로드되었습니다: {uploaded_file.name}")
+        st.success(f"📄 PDF 문서가 등록되었습니다: {uploaded_file.name}")
         pdf_reader = PdfReader(uploaded_file)
         for page in pdf_reader.pages:
             text = page.extract_text()
@@ -40,7 +40,8 @@ if uploaded_file is not None:
             with st.spinner("AI가 보험 가입 내역을 정밀 분석하고 있습니다... (약 10~20초 소요)"):
                 try:
                     genai.configure(api_key=api_key)
-                    model = genai.GenerativeModel("gemini-1.5-pro")
+                    # 오류 없는 최신 표준 모델명
+                    model = genai.GenerativeModel("gemini-1.5-flash-latest")
 
                     prompt = """
                     당신은 대한민국 20년 경력의 베테랑 독립보험대리점(GA) 수석 보험설계사이자 보장분석 전문가입니다.
